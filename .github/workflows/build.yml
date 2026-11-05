@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -25,12 +25,31 @@ jobs:
         with:
           gradle-version: '8.7'
 
+      - name: Extract ZIP
+        run: |
+          mkdir -p extracted
+          unzip -q Telkomsel_Launcher_Single_ZIP_IconShape.zip -d extracted
+
+      - name: Find Gradle project
+        id: project
+        run: |
+          SETTINGS=$(find extracted -name settings.gradle | head -n 1)
+
+          if [ -z "$SETTINGS" ]; then
+            echo "settings.gradle tidak ditemukan!"
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$SETTINGS")
+          echo "dir=$PROJECT_DIR" >> $GITHUB_OUTPUT
+
       - name: Build APK
-        run: gradle --no-daemon assembleDebug
+        run: |
+          gradle --no-daemon -p "${{ steps.project.outputs.dir }}" assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Telkomsel-Launcher-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: extracted/**/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
